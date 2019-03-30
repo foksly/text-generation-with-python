@@ -1,1 +1,1 @@
-# text-generation-with-python
+# Text generation approaches using python
