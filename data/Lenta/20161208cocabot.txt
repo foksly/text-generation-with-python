@@ -1,0 +1,12 @@
+
+Пользователи «ВКонтакте» потроллили «Дедушку Мороза» — чат-бота Coca-Cola, который раздает в социальной сети новогодние стикеры за фотографии бутылок или банок газировки и выполнение простых заданий. Участники акции выяснили, что бот не различает логотипы на этикетках и не считывает смысл присылаемых сообщений, а дарит стикеры за снимки предметов, не похожих на бутылки Coca-Cola.Так, «Дедушка Мороз» выдал стикеры пользователю, приславшему расплющенную банку Coca-Cola. Подарок достался и человеку, приславшему фотографию с пивными банками, на что бот ответил: «Дедушка доволен!». Скриншоты с издевательствами над ботом пользователи публикуют в Facebook и Twitter. 
+(function(d, s, id) {var js, fjs = d.body.getElementsByTagName(s)[0];if (d.getElementById(id)) return;js = d.createElement(s); js.id = id;js.src = "//connect.facebook.net/ru_RU/sdk.js#xfbml=1&version=v2.6";fjs.parentNode.insertBefore(js, fjs);}(document, 'script', 'facebook-jssdk'));
+
+—
+  LuFi (@canucmysuicide)
+  08 декабря 2016, 08:34
+
+
+ 
+(function(d, s, id) {var js, fjs = d.body.getElementsByTagName(s)[0];if (d.getElementById(id)) return;js = d.createElement(s); js.id = id;js.src = "//connect.facebook.net/ru_RU/sdk.js#xfbml=1&version=v2.6";fjs.parentNode.insertBefore(js, fjs);}(document, 'script', 'facebook-jssdk'));
+В пресс-службе Coca-Cola порталу vc.ru заявили, что из-за большого количества запросов в работе чат-бота произошел сбой, но его уже устранили.
