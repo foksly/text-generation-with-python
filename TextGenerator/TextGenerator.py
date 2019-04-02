@@ -10,21 +10,24 @@ import torch.nn as nn
 from torch import optim
 from torch.nn import functional as F
 
-import .NeuralLanguageModel
+from .NeuralLanguageModel import *
 from .utils import save_pkl, load_pkl
 
 
 class TextGenerator():
-    def __init__(self, method, analyzer, n_grams=None):
+    def __init__(self, method, analyzer):
         self.method = method
         self.analyzer = analyzer
-        self.n_grams = n_grams
-
+        self.n_grams = 0
         self.model = None
 
     def prepare_for_genetation(self,
                                data_folder_path,
-                               sos='.!?',
+                               special_tokens={
+                                   '<eol>': '\n',
+                                   '<sos>': '.?!'
+                               },
+                               verbose=True,
                                encoding=None,
                                tokenizer=None,
                                seq_len=None,
@@ -42,10 +45,14 @@ class TextGenerator():
                 example: 'data/IMDB'
             ------------------------------------------------------------------
 
-            sos: an iterable object that contains all of the tokens
-                 that should be converted to <sos> token
-                type: iterable object
-                example: '.!?' or ['.', '\n']
+            special_tokens: dict which maps names of special tokens to
+                            iterable objects which contain tokens to
+                            be replaced with a special token
+                type: dict
+                example: {
+                            '<eol>': '\n',
+                            '<sos>': '.?!'
+                        }
             ------------------------------------------------------------------
 
             encoding: encodding of the .txt data inside data_folder_path
@@ -81,7 +88,6 @@ class TextGenerator():
         examples:
             >>> prepare_for_genetation()
         """
-        sos_token = '<sos>'
         files = list(
             filter(lambda x: '.txt' in x, os.listdir(data_folder_path)))
         data = []
@@ -96,9 +102,9 @@ class TextGenerator():
                 with open(data_folder_path + file, 'r') as f:
                     text = f.read()
             if self.analyzer == 'word':
-                for p in sos:
-                    text = text.replace(p, ' ' + sos_token + ' ')
-
+                for st in special_tokens:
+                    for t in special_tokens[st]:
+                        text = text.replace(t, st)
                 if tokenizer:
                     data.extend(tokenizer(text.lower()))
                 else:
@@ -110,24 +116,22 @@ class TextGenerator():
 
         # preparing data for n_gram method of text generation
         if self.method == 'n_grams':
+            if verbose:
+                if self.analyzer == 'word':
+                    print('Number of words: ', len(data))
+                    print('Number of unique words: ', len(set(data)))
+                elif self.analyzer == 'char':
+                    print('Number of unique symbols: ', len(set(data)))
             return data
 
         # preparing data for rnn method of text generation
         elif self.method == 'RNN':
-            data = NeuralLanguageModel.prepare_dataloaders(data,
-                                                           seq_len,
-                                                           batch_size,
-                                                           validation_set,
-                                                           validation_size,
-                                                           random_seed)
+            data = prepare_dataloaders(data, seq_len, batch_size,
+                                       validation_set, validation_size,
+                                       random_seed)
             return data
 
-    def fit(self, data, hidden_dim,
-            vocab_size, embedding_dim,
-            n_layers, rnn_type='LSTM',
-            dropout=0, train_on_gpu=True,
-            save_path=None, learning_rate=0.001,
-            n_epochs=30):
+    def fit(self, data, save_path=None, **kwargs):
         """
         Trains a text generation model
 
@@ -137,13 +141,53 @@ class TextGenerator():
                       torch.DataLoaders if self.method == 'RNN'
             ------------------------------------------------------------------
 
-            save_path: path where to save a model in pkl format
+            save_path: path where to save a model in .pkl format
+                       or .pt if self.method == 'RNN'
                 type: str
+            ------------------------------------------------------------------
+
+        kwargs: if self.method == 'RNN'
+            hidden_dim: size of hidden state
+                type: int
+            ------------------------------------------------------------------
+
+            vocab_size: size of vocabulary of corpus
+                type: int
+            ------------------------------------------------------------------
+
+            embedding_dim: size of embeddings for nn.Embeddings layer
+                type: int
+            ------------------------------------------------------------------
+
+            n_layers: number of recurrent cell layers
+                type: int
+            ------------------------------------------------------------------
+
+            rnn_type: 'RNN', 'GRU' or 'LSTM'
+                type: str
+            ------------------------------------------------------------------
+
+            dropout: dropout probability for recurrent layers. If n_layers = 1,
+                     then dropout=0
+                type: float, such that 0 <= dropout < 1
+            ------------------------------------------------------------------
+
+            train_on_gpu: wheather to move tensors to cuda or not
+                type: bool
+            -----------------------------------------------------------------
+
+            learning_rate:
+                type: float
+            ------------------------------------------------------------------
+
+            n_epochs: number of epochs to train a RNN model
+                type: int
             ------------------------------------------------------------------
 
         """
         if self.method == 'n_grams':
             probs = {}
+            self.n_grams = kwargs['n_grams']
             data_grams = Counter(ngrams(data, self.n_grams))
             if self.method == 'n_grams':
                 for grams in tqdm(data_grams):
@@ -160,27 +204,33 @@ class TextGenerator():
         if self.method == 'rnn':
             train_loader, vocab, token2id, id2token = data
 
-            hidden_dim = hidden_dim
-            vocab_size = vocab_size
-            embedding_dim = embedding_dim
-            n_layers = n_layers
-            rnn_type = rnn_type
-            dropout = dropout
-            train_on_gpu = train_on_gpu
+            hidden_dim = kwargs['hidden_dim']
+            vocab_size = kwargs['vocab_size']
+            embedding_dim = kwargs['embedding_dim']
+            n_layers = kwargs['n_layers']
+            rnn_type = kwargs['rnn_type']
+            dropout = kwargs['dropout']
+            train_on_gpu = kwargs['train_on_gpu']
 
-            rnn = NeuralLanguageModel.NeuralLanguageModel(
-                hidden_dim, vocab_size, embedding_dim, n_layers)
+            rnn = NeuralLanguageModel(hidden_dim, vocab_size, embedding_dim,
+                                      n_layers)
             if train_on_gpu:
                 rnn.cuda()
             optimizer = optim.Adam(rnn.params(), learning_rate)
-            NeuralLanguageModel.train(rnn, optimizer,
-                                      n_epochs, train_loader,
-                                      print_every=1, save_path='rnn_model.pt')
+            train(
+                rnn,
+                optimizer,
+                n_epochs,
+                train_loader,
+                print_every=1,
+                save_path='rnn_model.pt')
+            self.model = rnn.eval()
 
     def generate(self,
                  pretrained_model=None,
                  generate_len=10,
-                 start_chars=None):
+                 start_chars=None,
+                 beautify=True):
         """
         Generates text of generate_len length
 
@@ -196,6 +246,10 @@ class TextGenerator():
 
             start_chars: start of the sentence for char level text generation
                 type: str
+            ------------------------------------------------------------------
+
+            beautify: if True makes text as beautiful as possible
+                type: bool
             ------------------------------------------------------------------
         """
         if not pretrained_model:
@@ -223,6 +277,30 @@ class TextGenerator():
                     temp_gram = (*temp_gram[1:], generated_word)
                     start.append(generated_word)
                 if self.analyzer == 'word':
-                    return ' '.join(start[1:])
+                    if beautify:
+                        for t in range(len(start) - 1):
+                            if start[t] == '<sos>':
+                                if start[t + 1] != '<sos>':
+                                    start[t + 1] = start[
+                                        t + 1][0].upper() + start[t + 1][1:]
+                            if start[t] == '<eol>':
+                                if start[t + 1] == '<eol>':
+                                    start[t + 1] = ''
+                            if start[t] == '':
+                                if start[t + 1] == '<eol>':
+                                    start[t + 1] = ''
+                                else:
+                                    start[t + 1] = start[
+                                        t + 1][0].upper() + start[t + 1][1:]
+                    res = ' '.join(start[1:])
+                    res = res.replace(' <sos> ', '. ')
+                    res = res.replace('<sos>', '.')
+                    res = res.replace(' <eol> ', '\n')
+                    res = res.replace('<eol>', '\n')
+                    res = res.replace(' , ', ', ')
+                    res = res.replace(' : ', ': ')
+                    res = res.replace(' ( ', ' (')
+                    res = res.replace(' ) ', ') ')
+                    return res
                 elif self.analyzer == 'char':
                     return ''.join(start)
