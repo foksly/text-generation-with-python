@@ -198,7 +198,8 @@ class TextGenerator():
                         probs[grams[:self.n_grams - 1]] = {
                             grams[-1]: data_grams[grams]
                         }
-
+            if save_path:
+                save_pkl(save_path, probs)
             self.model = probs
 
         if self.method == 'rnn':
