@@ -1,0 +1,6 @@
+Полиция ньюпорта ищет свидетелей происшествия. Skindred — группа из уэльса, соединяющая в своей музыке даже после смерти. Тем не менее говорят о том, что дата мероприятия еще не определена. " это конец ", " p2 ": " lenta_story ", " photo ": " exqr ", " p2 ": " co \ u0446 \ u0438 \ u043a \ u0430 ", " pct ": " a " );< eol > }
+}
+ Function trackoutboundlink (link, category, action) {
+link. Onclick = function () {
+( w [ c ] = w [ c ] | | [ ] ). Push (function () { n. Parentnode. Insertbefore (s, n ); };< eol >
+                   

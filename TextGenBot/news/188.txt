@@ -1,0 +1,4 @@
+« оторваться от онлайн-шопинга, чтобы объявить ляшко (выступление лидера фракции радикальной партии олега ляшко послом украины в россии сейчас выше плана, отмечается в сообщении ведомства, присланном в редакцию « ленты. Ру ». Window. _settings. Components. Counters = {
+el: ' #comments-count ' ,
+vk: ' https://vk. Com /. Id = __url__ ' ,
+vk: ' https://vk. Com / share. Php. Act = count & index = 1 & url = __url__ & format = json & callback =. '
