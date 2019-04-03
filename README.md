@@ -1,4 +1,4 @@
-# Text generation approaches using python
+# [Text generation approaches using python](https://github.com/foksly/text-generation-with-python)
 ---
 ## Table of contents
 

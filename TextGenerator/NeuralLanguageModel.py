@@ -219,7 +219,9 @@ def plot_history(train_history, title='loss'):
     plt.show()
 
 
-def train(model, opt, n_epochs,
+def train(model,
+          opt,
+          n_epochs,
           train_loader,
           valid_loader=None,
           save_every=1,

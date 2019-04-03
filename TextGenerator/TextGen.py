@@ -1,17 +1,19 @@
 import os
 import pickle
-from collections import Counter
+import click
 from tqdm import tqdm
 from nltk import ngrams
-import numpy as np
+from collections import Counter
+from nltk.tokenize import TweetTokenizer
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch import optim
 from torch.nn import functional as F
 
-from .NeuralLanguageModel import *
-from .utils import save_pkl, load_pkl
+from NeuralLanguageModel import NeuralLanguageModel, prepare_dataloaders, train
+from LoadSave import save_pkl, load_pkl
 
 
 class TextGenerator():
@@ -257,51 +259,57 @@ class TextGenerator():
             pretrained_model = self.model
         if self.method == 'n_grams':
             if isinstance(pretrained_model, str):
-                pass
-            else:
-                if self.analyzer == 'word':
-                    sos = list(
-                        filter(lambda x: x[0] == '<sos>', pretrained_model))
-                    start = list(sos[np.random.choice(len(sos))])
-                    temp_gram = tuple(start)
-                elif self.analyzer == 'char':
-                    assert len(start_chars) >= self.n_grams - 1
-                    start = [c for c in start_chars]
-                    temp_gram = tuple(start[-(self.n_grams - 1):])
+                pretrained_model = load_pkl(pretrained_model)
 
-                for i in range(generate_len - self.n_grams + 1):
-                    possible_tokens = list(pretrained_model[temp_gram].items())
-                    freqs = [i[1] for i in possible_tokens]
-                    probs = np.array(list(freqs)) / sum(freqs)
-                    generated_word = np.random.choice(
-                        [i[0] for i in possible_tokens], p=probs)
-                    temp_gram = (*temp_gram[1:], generated_word)
-                    start.append(generated_word)
-                if self.analyzer == 'word':
-                    if beautify:
-                        for t in range(len(start) - 1):
-                            if start[t] == '<sos>':
-                                if start[t + 1] != '<sos>':
-                                    start[t + 1] = start[
-                                        t + 1][0].upper() + start[t + 1][1:]
-                            if start[t] == '<eol>':
-                                if start[t + 1] == '<eol>':
-                                    start[t + 1] = ''
-                            if start[t] == '':
-                                if start[t + 1] == '<eol>':
-                                    start[t + 1] = ''
-                                else:
-                                    start[t + 1] = start[
-                                        t + 1][0].upper() + start[t + 1][1:]
-                    res = ' '.join(start[1:])
-                    res = res.replace(' <sos> ', '. ')
-                    res = res.replace('<sos>', '.')
-                    res = res.replace(' <eol> ', '\n')
-                    res = res.replace('<eol>', '\n')
-                    res = res.replace(' , ', ', ')
-                    res = res.replace(' : ', ': ')
-                    res = res.replace(' ( ', ' (')
-                    res = res.replace(' ) ', ') ')
-                    return res
-                elif self.analyzer == 'char':
-                    return ''.join(start)
+            if self.analyzer == 'word':
+                sos = list(filter(lambda x: x[0] == '<sos>', pretrained_model))
+                start = list(sos[np.random.choice(len(sos))])
+                temp_gram = tuple(start)
+            elif self.analyzer == 'char':
+                # assert len(start_chars) >= self.n_grams - 1
+                if start_chars:
+                    start = [c for c in start_chars]
+                else:
+                    start = list(
+                        filter(lambda x: x[0].isupper(), pretrained_model))
+                    idx = np.random.choice(len(start))
+                    start = start[idx]
+                    start = [c for c in start]
+                temp_gram = tuple(start[-(self.n_grams - 1):])
+
+            for i in range(generate_len - self.n_grams + 1):
+                possible_tokens = list(pretrained_model[temp_gram].items())
+                freqs = [i[1] for i in possible_tokens]
+                probs = np.array(list(freqs)) / sum(freqs)
+                generated_word = np.random.choice(
+                    [i[0] for i in possible_tokens], p=probs)
+                temp_gram = (*temp_gram[1:], generated_word)
+                start.append(generated_word)
+            if self.analyzer == 'word':
+                if beautify:
+                    for t in range(len(start) - 1):
+                        if start[t] == '<sos>':
+                            if start[t + 1] != '<sos>':
+                                start[t + 1] = start[t + 1][0].upper() + start[
+                                    t + 1][1:]
+                        if start[t] == '<eol>':
+                            if start[t + 1] == '<eol>':
+                                start[t + 1] = ''
+                        if start[t] == '':
+                            if start[t + 1] == '<eol>':
+                                start[t + 1] = ''
+                            else:
+                                start[t + 1] = start[t + 1][0].upper() + start[
+                                    t + 1][1:]
+                res = ' '.join(start[1:])
+                res = res.replace(' <sos> ', '. ')
+                res = res.replace('<sos>', '.')
+                res = res.replace(' <eol> ', '\n')
+                res = res.replace('<eol>', '\n')
+                res = res.replace(' , ', ', ')
+                res = res.replace(' : ', ': ')
+                res = res.replace(' ( ', ' (')
+                res = res.replace(' ) ', ') ')
+                return res
+            elif self.analyzer == 'char':
+                return ''.join(start)
